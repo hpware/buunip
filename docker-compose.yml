@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: network
+      POSTGRES_USER: network
+      POSTGRES_PASSWORD: network
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres.sql:/docker-entrypoint-initdb.d/001-network-mappings.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U network -d network"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
