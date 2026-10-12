@@ -1,4 +1,18 @@
 services:
+  app:
+    build:
+      context: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://network:network@postgres:5432/network
+      ENABLE_DETAILED_API: "true"
+      HTTP_PORT: "3005"
+      HTTPS_PORT: "-1"
+    ports:
+      - "3005:3005"
+
   postgres:
     image: postgres:16-alpine
     environment:

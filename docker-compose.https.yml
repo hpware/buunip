@@ -1,0 +1,10 @@
+services:
+  app:
+    environment:
+      HTTPS_PORT: "3443"
+      HTTPS_PUBLIC_CERT: /app/certs/public.pem
+      HTTPS_PRIVATE_CERT: /app/certs/private.pem
+    ports:
+      - "3443:3443"
+    volumes:
+      - ./certs:/app/certs:ro
