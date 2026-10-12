@@ -1,5 +1,6 @@
 import { type NetworkMapping } from "./types";
 import { readFileSync } from "node:fs";
+import { isIP } from "node:net";
 import { createSecureContext } from "node:tls";
 
 // checks
@@ -7,6 +8,7 @@ const httpPortValue = process.env.HTTP_PORT ?? "3005";
 const httpsPortValue = process.env.HTTPS_PORT ?? "-1";
 const httpsCertificatePublicPath = process.env.HTTPS_PUBLIC_CERT;
 const httpsCertificatePrivatePath = process.env.HTTPS_PRIVATE_CERT;
+const hasProxy = process.env.HAS_PROXY?.toLowerCase() === "true";
 const httpPort = Number(httpPortValue);
 const httpsPort = Number(httpsPortValue);
 if (
@@ -63,18 +65,35 @@ if (httpsPort !== -1) {
 }
 
 // program
+const getClientAddress = (
+  request: Request,
+  server: Bun.Server<undefined>,
+): string | undefined => {
+  const addresses: (string | undefined)[] = [];
+  if (hasProxy) {
+    addresses.push(
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      request.headers.get("x-real-ip")?.trim(),
+    );
+  }
+  addresses.push(server.requestIP(request)?.address);
+  for (const candidate of addresses) {
+    const address = candidate?.replace(/^::ffff:/i, "");
+    if (address && isIP(address)) return address;
+  }
+  return undefined;
+};
+
 const apiRoutes = {
   "/": (request: Request, server: Bun.Server<undefined>) => {
-    const ip = server.requestIP(request);
-    const address = ip?.address.replace(/^::ffff:/i, "");
+    const address = getClientAddress(request, server);
     return new Response(address ?? "IP address unavailable", {
-      status: ip ? 200 : 500,
+      status: address ? 200 : 500,
     });
   },
   "/info": async (request: Request, server: Bun.Server<undefined>) => {
     if (process.env.ENABLE_DETAILED_API?.toUpperCase() === "TRUE") {
-      const ip = server.requestIP(request);
-      const address = ip?.address.replace(/^::ffff:/i, "");
+      const address = getClientAddress(request, server);
       if (!address) {
         return new Response("IP address unavailable", { status: 500 });
       }
